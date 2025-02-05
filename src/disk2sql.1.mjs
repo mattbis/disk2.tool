@@ -16,12 +16,14 @@ import envPaths from 'env-paths'
 import {makeDirectory} from 'make-dir'
 import osName from 'os-name'
 import esMain from 'es-main'
+// TODO: (matt): use this just for colouring the end message.. a slight flaw in chalkpack.. i need to make a k:v method.....
+import chalk from 'chalk'
 
 import * as sqlite3 from 'sqlite3'
 import * as git from 'simple-git'
 
 assert(chalkpack, 'chalkpack not found')
-// TODO: (matt): register as soon as possible 
+// TODO: (matt): register as soon as possible
 registerChalkpack()
 
 const startTime = performance.now()
@@ -113,13 +115,12 @@ process.on('exit', function onExitProcess() {
 })
 
 // #region arguments
+    // TODO: (matt): is this case insensitive?
 const argDef = {
     verbose: { type: 'boolean', short: 'v' },
-    // TODO: (matt): is this case insensitive?
     force: { type: 'boolean', short: 'F' },
     from: { type: 'string', short: 'fr' },
     to: { type: 'string' },
-    force: { type: 'boolean', short: 'F' },
     microsleep: { type: 'int', short: 'ms' },
     help: { type: 'boolean', short: 'h' }
 }
@@ -130,9 +131,13 @@ if (!args) l.e(`Problem parsing args`) && process.exit(1)
 
 // #region flow
 const invariant = (cond, msg) => assert(cond, msg)
-const try_fn = async fn => {
-    try { await fn() }
-    catch (e) {/*args.verbose && */log.e(e)}
+const try_fn = async(fn, err_fn) => {
+    try {
+        await fn()
+    }
+    catch (e) {
+        err_fn && err_fn() || l.e(e)
+    }
 }
 const sleep = async (ms= 1000) => {
     if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms / 1000))
@@ -213,7 +218,10 @@ const repo = async repoPath => await git(repoPath)
 const snake_case = str => str.replace(/[^a-zA-Z0-9]/g, '_')
 const db_filename = file =>
     snake_case(path.resolve(file))
-    .concat('.', CONFIG.db.extension)
+    .concat(
+        '.',
+        CONFIG.db.extension
+    )
 // #endregion string
 
 // #region stages
@@ -234,12 +242,20 @@ const end = () => {
 
 // #region main
 async function main() {
-    try_fn(exists(l.i('args.from exists:'), args.from))
+    return try_fn(
+        exists(l.i('args.from exists:'), args.from)
+    )
 }
 // #endregion main
 
 // -- needs Top-Level async/await
-if (esMain()) main()
-else {
-    // -- TODO: (matt): display a message that the module has be loaded ...
-}
+;(() => try_fn(async () => {
+    if (esMain(import.meta)) {
+        await main()
+    }
+    else {
+        if(args.verbose) {
+            l.yes('disk2 has been loaded')
+        }
+    }
+}))

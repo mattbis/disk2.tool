@@ -1,0 +1,7 @@
+{
+    "name": "disk2.tool",
+    "repository": {
+        "url": "https://github.com/mattbis/disk2.tool"
+    },
+    "type": "module"
+}
